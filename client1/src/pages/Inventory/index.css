@@ -1,0 +1,10 @@
+.product {
+  height: 50px;
+  width: 50px;
+  background-color: light-blue;
+  color: rgb(86, 209, 86);
+}
+.icons {
+  height: 25px;
+  width: 25px;
+}
