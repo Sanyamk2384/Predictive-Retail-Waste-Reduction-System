@@ -107,6 +107,18 @@ This file tracks every change made to `server/` and `AIModel/` while building th
 
 ---
 
+### 2026-11-10 — Fix right-censored forecast target in the ML pipeline
+
+**Files:** `AIModel/app/ML_pipeline.py`
+
+**Issue:** `train_and_forecast_per_product` builds its training target as a reversed rolling **sum** of the next `forecast_days` of sales (`quantitySold.iloc[::-1].rolling(forecast_days).sum().iloc[::-1]`). Near the end of the historical series there's no real "future" data left to sum - the window silently shrinks (e.g. the very last day's target is just that one day's sales, not a 30-day projection). The model is trained on this, including these systematically truncated rows, and then inference uses the features from exactly the most recent day (`iloc[[-1]]`) - the single worst-affected row. In practice this meant every product's predicted daily velocity came back implausibly tiny (0.2-0.8 units/day) regardless of how much it actually sold, which fed directly into the discount-risk and inventory-analysis reports and made almost everything look CRITICAL/OVERSTOCKED no matter the real sales pattern.
+
+**What changed:** Target is now `rolling(forecast_days).mean() * forecast_days` instead of `.sum()`. Wherever a full window of future days exists this is mathematically identical to the old sum (`mean * N == sum` when N points are present); where the window is truncated near the end of the series, it scales the partial average up to a full-period estimate instead of silently under-reporting. No change to the model type, features, or API contract - purely a training-target fix.
+
+**Why:** This directly undermines the core forecasting feature the whole project is built around. Found by comparing predicted `dailyAverageQuantity` against the actual sales volume in the uploaded data while testing the dashboard end to end - the numbers didn't scale with real sales at all.
+
+**Affects API:** No change to request/response shape. Predicted numbers will differ (be substantially less skewed toward zero) from before this fix.
+
 ## Issues found but not fixed (left alone on purpose)
 
 - **Inconsistent success response shapes** across controllers (`{success, data}` vs `{success, batches, pagination}` vs `{success, pagination, data}`). Not fixed because normalizing it would change the existing API contract across every endpoint for cosmetic reasons only. The frontend's API layer handles each shape explicitly instead.

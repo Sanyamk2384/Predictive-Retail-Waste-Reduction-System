@@ -68,10 +68,22 @@ def train_and_forecast_per_product(
         p_df_full['rolling_7_rev'] = p_df_full['totalAmount'].rolling(7, min_periods=1).mean()
         p_df_full['rolling_30_rev'] = p_df_full['totalAmount'].rolling(30, min_periods=1).mean()
 
-        # Target variable for ML model training: cumulative N-day forward sales
-        # Shift back by N days to align historical feature state with future N-day cumulative sum
-        p_df_full['target_future_qty'] = p_df_full['quantitySold'].iloc[::-1].rolling(forecast_days, min_periods=1).sum().iloc[::-1]
-        p_df_full['target_future_rev'] = p_df_full['totalAmount'].iloc[::-1].rolling(forecast_days, min_periods=1).sum().iloc[::-1]
+        # Target variable for ML model training: cumulative N-day forward sales.
+        # Use mean()*forecast_days rather than sum(): near the end of the series the
+        # forward window is right-censored (there's no real data past "today"), so a
+        # plain rolling sum silently shrinks for exactly the rows closest to "now" -
+        # which is the row actually used for live inference below. Scaling the mean of
+        # whatever future days ARE available keeps the target an unbiased estimate of a
+        # full forecast_days-ahead total regardless of how much of the window exists,
+        # and is identical to the old sum() wherever a full window is present.
+        p_df_full['target_future_qty'] = (
+            p_df_full['quantitySold'].iloc[::-1].rolling(forecast_days, min_periods=1).mean().iloc[::-1]
+            * forecast_days
+        )
+        p_df_full['target_future_rev'] = (
+            p_df_full['totalAmount'].iloc[::-1].rolling(forecast_days, min_periods=1).mean().iloc[::-1]
+            * forecast_days
+        )
 
         # Prepare feature matrix X and target y
         features = [
