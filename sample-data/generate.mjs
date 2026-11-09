@@ -86,19 +86,24 @@ for (const storeCode of STORES) {
       `${batchIdB},${sku},${storeCode},${batchBQty},${batchBQty},${fmt(expiryB)},${fmt(receivedB)}`,
     );
 
-    // Keep total sold safely under batchAQty when we want leftover near-expiry stock,
-    // otherwise let it exceed batchA so FIFO dips into the fresh batch (healthy turnover).
+    // Keep total sold safely under batchAQty when we want leftover near-expiry stock
+    // (slow mover -> CRITICAL risk). Otherwise sell most of the combined stock with a
+    // ramp toward recent days, so the model's latest-day features show strong, recent
+    // velocity (healthy turnover -> LOW/MODERATE risk, ADEQUATE/UNDERSTOCKED stock).
     const targetTotal = riskyLeftover
-      ? Math.floor(batchAQty * 0.55)
-      : Math.floor((batchAQty + batchBQty) * 0.35);
+      ? Math.floor(batchAQty * 0.5)
+      : Math.floor((batchAQty + batchBQty) * 0.8);
     const avgPerDay = Math.max(1, Math.round(targetTotal / historyDays));
 
     let totalSold = 0;
     for (let i = historyDays; i >= 1; i -= 1) {
       const date = addDays(today, -i);
-      const jitter = Math.round((Math.sin(i * 1.7 + sku.length) + 1) * (avgPerDay * 0.4));
-      const qty = Math.max(0, avgPerDay + jitter - Math.round(avgPerDay * 0.4));
-      if (qty === 0) continue;
+      // Recency ramp: later (smaller i) days sell closer to full avgPerDay, older days
+      // sell less - keeps the model's rolling "latest day" features representative of
+      // current demand instead of being dragged down by early sparse history.
+      const recencyFactor = riskyLeftover ? 1 : 0.5 + 0.5 * (1 - i / historyDays);
+      const jitter = Math.round((Math.sin(i * 1.7 + sku.length) + 1) * (avgPerDay * 0.15));
+      const qty = Math.max(1, Math.round(avgPerDay * recencyFactor) + jitter - Math.round(avgPerDay * 0.15));
       totalSold += qty;
       const revenue = (qty * PRICE[sku]).toFixed(2);
       salesRows.push(`${sku},${storeCode},${qty},${fmt(date)},${revenue},0`);
