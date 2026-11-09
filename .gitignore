@@ -29,3 +29,6 @@ client1/dist/
 
 # Local scratch dev MongoDB replica-set instance (see BACKEND_CHANGES.md)
 .devdb/
+
+# Local verification scratch space (playwright scripts, screenshots)
+.scratch/
