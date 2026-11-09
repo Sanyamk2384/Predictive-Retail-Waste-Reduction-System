@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { parseSalesCsv } from "../utils/csvParser.js";
 import { saveSalesBatch, getSales as getSalesPage } from "../services/salesService.js";
 
@@ -9,18 +8,7 @@ export const uploadSalesCsv = async (req, res) => {
     });
   }
   const batchId = `batch-${Date.now()}`;
-  const filePath = req.file.path;
-
-  let result;
-  try {
-    result = await parseSalesCsv(filePath, batchId, saveSalesBatch);
-  } finally {
-    try {
-      await fs.unlink(filePath);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-  }
+  const result = await parseSalesCsv(req.file.buffer, batchId, saveSalesBatch);
   return res.status(200).json({ success: true, batchId, ...result });
 };
 

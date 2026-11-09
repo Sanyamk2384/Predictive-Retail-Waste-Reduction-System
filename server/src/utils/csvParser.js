@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import { Readable } from "node:stream";
 import csv from "csv-parser";
 import { validateSalesRow } from "../validations/salesValidator.js";
 import { validateInventoryRow } from "../validations/inventoryValidator.js";
@@ -8,8 +8,8 @@ import { validateProductRow } from "../validations/productValidator.js";
 const BATCH_SIZE = 1000;
 const MAX_REPORTED_SKIPPED_ROWS = 50;
 
-const parseCsv = async (filePath, validator, onBatchParsed, mapData = (data) => data) => {
-  const source = fs.createReadStream(filePath);
+const parseCsv = async (fileBuffer, validator, onBatchParsed, mapData = (data) => data) => {
+  const source = Readable.from(fileBuffer);
   const parser = source.pipe(csv());
   source.on("error", (error) => parser.destroy(error));
 
@@ -57,17 +57,17 @@ const parseCsv = async (filePath, validator, onBatchParsed, mapData = (data) => 
   }
 };
 
-export const parseSalesCsv = (filePath, batchId, onBatchParsed) =>
-  parseCsv(filePath, validateSalesRow, onBatchParsed, (data) => ({
+export const parseSalesCsv = (fileBuffer, batchId, onBatchParsed) =>
+  parseCsv(fileBuffer, validateSalesRow, onBatchParsed, (data) => ({
     ...data,
     batchId,
   }));
 
-export const parseInventoryCsv = (filePath, onBatchParsed) =>
-  parseCsv(filePath, validateInventoryRow, onBatchParsed);
+export const parseInventoryCsv = (fileBuffer, onBatchParsed) =>
+  parseCsv(fileBuffer, validateInventoryRow, onBatchParsed);
 
-export const parseStoreData = (filePath, onBatchParsed) =>
-  parseCsv(filePath, validateStoreRow, onBatchParsed);
+export const parseStoreData = (fileBuffer, onBatchParsed) =>
+  parseCsv(fileBuffer, validateStoreRow, onBatchParsed);
 
-export const parseProductData = (filePath, onBatchParsed) =>
-  parseCsv(filePath, validateProductRow, onBatchParsed);
+export const parseProductData = (fileBuffer, onBatchParsed) =>
+  parseCsv(fileBuffer, validateProductRow, onBatchParsed);

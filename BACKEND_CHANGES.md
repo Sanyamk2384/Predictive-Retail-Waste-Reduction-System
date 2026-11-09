@@ -140,10 +140,21 @@ Configures one Vercel project with three services: `frontend` (this repo's `fron
 **Deliberately excluded:** `client1/` - an earlier, unrelated scratch frontend (React 19, a single Inventory page) that predates this work and isn't part of the stack actually built. Flagging in case anyone expected it included.
 
 **Not yet resolved / needs a decision before this will actually work end-to-end on Vercel** (see the chat for the full writeup - summarizing here for your partner):
-- `multer.middleware.js` writes uploaded CSVs to a local `server/uploads/` folder via `diskStorage`. Vercel's serverless filesystem is read-only except `/tmp`, and nothing persists between invocations - CSV upload will likely fail as deployed today. Needs either `multer.memoryStorage()` (would also require `csvParser.js` to accept a buffer/stream instead of a file path) or hosting `server/` somewhere with a normal persistent process instead (Render/Railway/Fly.io) rather than as a Vercel serverless function.
 - `server.js` calls `app.listen()` and `process.exit(1)` on a failed DB connection - built for a long-running process, not a serverless function. The `entrypoint` above points at `src/app.js` (which only exports the Express `app`, no `.listen()`) as a better fit, but Mongoose connection caching/reuse across invocations hasn't been addressed.
 - `AIModel/app/database.py` loads Mongo config from `server/.env` via a relative path assuming both folders are co-located on disk. As a separately-rooted Vercel service, `AIModel` likely won't have `server/` alongside it at build time - `MONGO_URI`/`DB_NAME` need to be set directly as env vars on the `aimodel` service instead.
 - `ML_pipeline.py` trains a fresh scikit-learn model per request. This worked fine locally but may be slow/heavy for Vercel's serverless time and memory limits at any real data scale - untested on Vercel specifically.
+
+### 2026-11-10 — Switch CSV upload from disk storage to in-memory buffers
+
+**Files:** `server/src/middlewares/multer.middleware.js`, `server/src/utils/csvParser.js`, `server/src/controllers/{inventory,product,store}.controller.js`, `server/src/controllers/salesController.js`, `server/test/inventoryCsv.test.js`
+
+**Issue:** CSV uploads were written to a local `server/uploads/` folder via `multer.diskStorage`, then read back off disk and deleted afterward. Vercel's (and most serverless platforms') filesystem is read-only except `/tmp`, and nothing written there persists between invocations - this would have failed outright once deployed, flagged as an open risk in the Vercel config change above.
+
+**What changed:** `multer.middleware.js` now uses `multer.memoryStorage()` - uploaded files arrive as `req.file.buffer` instead of being written to `req.file.path`. `csvParser.js`'s `parseCsv` now builds its read stream from that buffer (`Readable.from(fileBuffer)`) instead of `fs.createReadStream(filePath)`. All four upload controllers now pass `req.file.buffer` straight through and no longer need the `fs.unlink` cleanup step afterward (there's no file to clean up), which also removed their `node:fs/promises` import and the try/finally wrapper entirely. Updated `inventoryCsv.test.js` to build an in-memory `Buffer` instead of writing a temp file, and fixed an assertion that had gone stale when `skippedRows`/`skippedRowsTruncated` were added to the response shape in an earlier change.
+
+**Why:** Makes CSV upload actually work once `server/` is deployed as a Vercel serverless function - no disk dependency left anywhere in the upload path. 25MB files held in memory briefly per-request is well within normal serverless memory limits.
+
+**Affects API:** No change to request/response shape. Verified locally: all three `node --test` tests pass, and re-ran the full upload -> predict -> risk-report -> inventory-analysis pipeline plus a full browser smoke test against the running app with zero regressions.
 
 ## Issues found but not fixed (left alone on purpose)
 

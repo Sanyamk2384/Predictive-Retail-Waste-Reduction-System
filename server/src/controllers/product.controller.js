@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { parseProductData } from "../utils/csvParser.js";
 import {
   saveProductBatch,
@@ -13,16 +12,7 @@ export const uploadProductData = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "Please upload a valid CSV file." });
   }
-  let result;
-  try {
-    result = await parseProductData(req.file.path, saveProductBatch);
-  } finally {
-    try {
-      await fs.unlink(req.file.path);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-  }
+  const result = await parseProductData(req.file.buffer, saveProductBatch);
   return res.status(200).json({ success: true, ...result });
 };
 

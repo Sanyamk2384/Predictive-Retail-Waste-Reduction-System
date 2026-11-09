@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import mongoose from "mongoose";
 import { parseInventoryCsv } from "../utils/csvParser.js";
 import {
@@ -16,16 +15,7 @@ export const uploadInventoryCsv = async (req, res) => {
       .json({ success: false, message: "Please upload a valid CSV file." });
   }
 
-  let result;
-  try {
-    result = await parseInventoryCsv(req.file.path, saveInventoryBatch);
-  } finally {
-    try {
-      await fs.unlink(req.file.path);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-  }
+  const result = await parseInventoryCsv(req.file.buffer, saveInventoryBatch);
   return res.status(200).json({ success: true, ...result });
 };
 

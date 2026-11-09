@@ -1,19 +1,11 @@
-import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import multer from "multer";
-import { fileURLToPath } from "node:url";
 
-const uploadDirectory = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../../uploads",
-);
-fs.mkdirSync(uploadDirectory, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: uploadDirectory,
-  filename: (req, file, cb) => cb(null, `${randomUUID()}.csv`),
-});
+// In-memory storage: Vercel's (and most serverless) filesystems are read-only
+// except /tmp, and nothing written there persists between invocations. CSV
+// files are small and consumed once per request, so buffering in memory
+// avoids disk entirely - see csvParser.js, which now streams from the buffer.
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
   if (
