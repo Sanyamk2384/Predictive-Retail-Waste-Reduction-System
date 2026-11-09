@@ -2,8 +2,30 @@
 node_modules/
 client/node_modules/
 server/node_modules/
+frontend/node_modules/
+client1/node_modules/
 
 # Environment variables
 .env
 .env.*
 !.env.example
+
+# Runtime upload scratch space
+server/uploads/
+
+# Python
+AIModel/__pycache__/
+**/__pycache__/
+*.pyc
+AIModel/.venv/
+AIModel/venv/
+
+# Build output
+frontend/dist/
+client1/dist/
+
+# Logs
+*.log
+
+# Local scratch dev MongoDB replica-set instance (see BACKEND_CHANGES.md)
+.devdb/
