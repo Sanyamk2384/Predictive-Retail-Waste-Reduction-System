@@ -1,0 +1,40 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: #ffffff;
+  color: #111111;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+/* Cal Sans is a licensed font unavailable on the web; per the design guide's
+   documented fallback, display headings use Inter 600 with tight negative
+   tracking to approximate its geometric, condensed character. */
+.font-display {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+* {
+  scrollbar-width: thin;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
