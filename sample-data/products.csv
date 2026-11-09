@@ -1,0 +1,11 @@
+sku,name,category,cost_price,selling_price,unit,shelf_life
+MILK-001,Full Cream Milk 1L,Dairy,32,42,pcs,5
+BRD-001,Whole Wheat Bread,Bakery,28,38,pcs,4
+YOG-001,Plain Yogurt 400g,Dairy,25,35,pcs,7
+PNR-001,Fresh Paneer 200g,Dairy,45,60,pcs,4
+TOM-001,Tomato 1kg,Produce,20,30,kg,6
+SPN-001,Spinach Bunch,Produce,15,22,pcs,3
+BAN-001,Banana 1kg,Produce,18,26,kg,5
+EGG-001,Eggs Tray 12pc,Dairy,70,90,pack,10
+BUT-001,Butter 100g,Dairy,48,58,pcs,20
+CRT-001,Carrot 1kg,Produce,16,24,kg,8

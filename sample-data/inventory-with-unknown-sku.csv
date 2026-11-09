@@ -1,0 +1,2 @@
+batch_id,sku,store_code,quantity_current,quantity_received,expiry_date,received_date
+BATCH-BAD-2,UNKNOWN-SKU,ST-001,10,10,2026-12-01,2026-11-01
