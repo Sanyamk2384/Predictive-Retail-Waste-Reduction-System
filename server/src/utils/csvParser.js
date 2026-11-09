@@ -6,6 +6,7 @@ import { validateStoreRow } from "../validations/storeValidator.js";
 import { validateProductRow } from "../validations/productValidator.js";
 
 const BATCH_SIZE = 1000;
+const MAX_REPORTED_SKIPPED_ROWS = 50;
 
 const parseCsv = async (filePath, validator, onBatchParsed, mapData = (data) => data) => {
   const source = fs.createReadStream(filePath);
@@ -14,13 +15,19 @@ const parseCsv = async (filePath, validator, onBatchParsed, mapData = (data) => 
 
   let totalProcessed = 0;
   let totalSkipped = 0;
+  let rowNumber = 0;
+  const skippedRows = [];
   let batchRecords = [];
 
   try {
     for await (const rawRow of parser) {
+      rowNumber += 1;
       const validation = validator(rawRow);
       if (!validation.isValid) {
         totalSkipped += 1;
+        if (skippedRows.length < MAX_REPORTED_SKIPPED_ROWS) {
+          skippedRows.push({ row: rowNumber, errors: validation.errors });
+        }
         continue;
       }
 
@@ -37,7 +44,12 @@ const parseCsv = async (filePath, validator, onBatchParsed, mapData = (data) => 
       totalProcessed += batchRecords.length;
     }
 
-    return { totalProcessed, totalSkipped };
+    return {
+      totalProcessed,
+      totalSkipped,
+      skippedRows,
+      skippedRowsTruncated: totalSkipped > skippedRows.length,
+    };
   } catch (error) {
     source.destroy();
     parser.destroy();
