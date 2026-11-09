@@ -5,13 +5,20 @@ import inventoryRoute from "./inventory.route.js";
 import storeRouter from "./store.route.js";
 import productRouter from "./product.route.js";
 import inventoryAnalysisRouter from "./invenotryAnalysis.route.js";
+import authRouter from "./auth.route.js";
+import predictionRouter from "./prediction.route.js";
+import { requireAuth } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router.use("/sale", saleRoute);
-router.use("/riskReport", reportRouter);
-router.use("/inventory", inventoryRoute);
-router.use("/product", productRouter);
-router.use("/store", storeRouter);
-router.use("/inventoryAnalysis", inventoryAnalysisRouter);
+router.use("/auth", authRouter);
+
+router.use("/sale", requireAuth, saleRoute);
+router.use("/riskReport", requireAuth, reportRouter);
+router.use("/inventory", requireAuth, inventoryRoute);
+router.use("/product", requireAuth, productRouter);
+router.use("/store", requireAuth, storeRouter);
+router.use("/inventoryAnalysis", requireAuth, inventoryAnalysisRouter);
+router.use("/predict", requireAuth, predictionRouter);
+
 export default router;

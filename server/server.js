@@ -4,6 +4,10 @@ import { connectDB } from "./src/config/db.config.js";
 
 const startServer = async () => {
   try {
+    if (!env.jwt_secret) {
+      throw new Error("JWT_SECRET is not configured");
+    }
+
     await connectDB();
 
     await new Promise((resolve, reject) => {
