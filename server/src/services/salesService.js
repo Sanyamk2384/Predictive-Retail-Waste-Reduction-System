@@ -37,10 +37,11 @@ export const saveSalesBatch = async (records) => {
 
   try {
     await session.withTransaction(async () => {
-      const [products, stores] = await Promise.all([
-        Product.find({ sku: { $in: skus } }).select("_id sku").session(session),
-        Store.find({ storeCode: { $in: storeCodes } }).select("_id storeCode").session(session),
-      ]);
+      // Sequential, not Promise.all: concurrent operations on the same transaction
+      // session are rejected outside a sharded cluster ("active transaction number"
+      // conflict) - a single session can only run one op at a time.
+      const products = await Product.find({ sku: { $in: skus } }).select("_id sku").session(session);
+      const stores = await Store.find({ storeCode: { $in: storeCodes } }).select("_id storeCode").session(session);
       const productsBySku = new Map(products.map((product) => [product.sku, product._id]));
       const storesByCode = new Map(stores.map((store) => [store.storeCode, store._id]));
       const batchesByInventoryKey = new Map();
