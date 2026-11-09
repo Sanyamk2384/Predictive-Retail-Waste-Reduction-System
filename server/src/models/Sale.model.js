@@ -26,4 +26,6 @@ const saleSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+saleSchema.index({ storeId: 1, productId: 1, date: -1 });
+
 export const Sale = mongoose.model("Sale", saleSchema);
