@@ -1,6 +1,9 @@
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5010";
+// In production (same-origin Vercel deploy) this should be the relative "/api" so
+// requests go through the project's own rewrite to the "server" service - no CORS,
+// no separate URL to manage. In local dev it points at the standalone Express server.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5010/api";
 
 export const apiClient = axios.create({ baseURL: BASE_URL });
 

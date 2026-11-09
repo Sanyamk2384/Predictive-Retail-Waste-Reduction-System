@@ -119,6 +119,32 @@ This file tracks every change made to `server/` and `AIModel/` while building th
 
 **Affects API:** No change to request/response shape. Predicted numbers will differ (be substantially less skewed toward zero) from before this fix.
 
+### 2026-11-10 — Mount the API under /api for Vercel multi-service routing
+
+**Files:** `server/src/app.js`, `frontend/src/api/client.js`, `frontend/.env.example`, root `vercel.json` (new)
+
+**Issue:** Deploying as a single Vercel project with separate `frontend`, `server`, and `aimodel` services needs one public rewrite per path: `/api/*` → the `server` service, everything else → the `frontend` service (the SPA). The API's routes were mounted at the root (`/auth`, `/product`, `/store`, `/inventory`, ...), which collides directly with the frontend's own page routes of the same name (`/inventory`, `/products`, `/stores` are both React Router pages *and* were API paths) - there's no way to route both to different services on one domain without a prefix.
+
+**What changed:** `app.js` now mounts the router at `/api` instead of `/`. Every endpoint from the Phase 1 map moved one level down, e.g. `POST /auth/login` -> `POST /api/auth/login`, `GET /inventory` -> `GET /api/inventory`, etc. - path structure under `/api` is otherwise unchanged. The frontend's axios client and `.env.example` were updated to match (`VITE_API_BASE_URL` now includes the `/api` suffix for local dev; in the Vercel deploy it should be set to the relative path `/api` so requests stay same-origin and go through the rewrite with no CORS needed).
+
+**Why:** Required for the Vercel "services" routing model (see `vercel.json`) to tell the frontend's page paths and the backend's API paths apart on one domain.
+
+**Affects API:** **Yes - every endpoint except none.** Anything calling the old unprefixed paths (Postman collections, curl scripts, the sample-data upload commands documented earlier in this session) needs `/api` added. Local dev is unaffected in spirit, just update whatever base URL you're using to include `/api`.
+
+### 2026-11-10 — Add vercel.json for a three-service Vercel deployment
+
+**Files:** `vercel.json` (new, repo root)
+
+Configures one Vercel project with three services: `frontend` (this repo's `frontend/`, public, serves everything not under `/api`), `server` (`server/`, public only under `/api/*`), and `aimodel` (`AIModel/`, internal only - never reachable directly from the browser, matching the Node proxy built earlier specifically so the browser never talks to the Python service directly). `server` gets a binding to `aimodel` using the env var name `AI_SERVICE_URL`, which the existing `prediction.service.js` already reads - no code change needed there.
+
+**Deliberately excluded:** `client1/` - an earlier, unrelated scratch frontend (React 19, a single Inventory page) that predates this work and isn't part of the stack actually built. Flagging in case anyone expected it included.
+
+**Not yet resolved / needs a decision before this will actually work end-to-end on Vercel** (see the chat for the full writeup - summarizing here for your partner):
+- `multer.middleware.js` writes uploaded CSVs to a local `server/uploads/` folder via `diskStorage`. Vercel's serverless filesystem is read-only except `/tmp`, and nothing persists between invocations - CSV upload will likely fail as deployed today. Needs either `multer.memoryStorage()` (would also require `csvParser.js` to accept a buffer/stream instead of a file path) or hosting `server/` somewhere with a normal persistent process instead (Render/Railway/Fly.io) rather than as a Vercel serverless function.
+- `server.js` calls `app.listen()` and `process.exit(1)` on a failed DB connection - built for a long-running process, not a serverless function. The `entrypoint` above points at `src/app.js` (which only exports the Express `app`, no `.listen()`) as a better fit, but Mongoose connection caching/reuse across invocations hasn't been addressed.
+- `AIModel/app/database.py` loads Mongo config from `server/.env` via a relative path assuming both folders are co-located on disk. As a separately-rooted Vercel service, `AIModel` likely won't have `server/` alongside it at build time - `MONGO_URI`/`DB_NAME` need to be set directly as env vars on the `aimodel` service instead.
+- `ML_pipeline.py` trains a fresh scikit-learn model per request. This worked fine locally but may be slow/heavy for Vercel's serverless time and memory limits at any real data scale - untested on Vercel specifically.
+
 ## Issues found but not fixed (left alone on purpose)
 
 - **Inconsistent success response shapes** across controllers (`{success, data}` vs `{success, batches, pagination}` vs `{success, pagination, data}`). Not fixed because normalizing it would change the existing API contract across every endpoint for cosmetic reasons only. The frontend's API layer handles each shape explicitly instead.
