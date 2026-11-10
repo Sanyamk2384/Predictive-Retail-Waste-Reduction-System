@@ -1,0 +1,11 @@
+**/node_modules
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/.env
+.devdb
+.scratch
+client1
+sample-data
+AIModel/requirements.full.txt.bak
